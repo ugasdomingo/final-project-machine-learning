@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Hotel Overbooking API</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Dashboard</h1>
+    <p>Predicción individual, cálculo de overbooking por lote e historial.</p>
+  </header>
+  <main>
+    <div class="card">
+      <h2>API key activa</h2>
+      <input id="api-key-box" placeholder="pega tu API key">
+      <button id="update-key-btn">Usar esta API key</button>
+      <span class="pill" id="key-status"></span>
+    </div>
+
+    <div class="card">
+      <h2>Predicción individual</h2>
+      <form id="prediction-form">
+        <div class="grid">
+          <div>
+            <label>hotel</label>
+            <select name="hotel">
+              {% for v in categorical_values.hotel %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>meal</label>
+            <select name="meal">
+              {% for v in categorical_values.meal %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>market_segment</label>
+            <select name="market_segment">
+              {% for v in categorical_values.market_segment %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>distribution_channel</label>
+            <select name="distribution_channel">
+              {% for v in categorical_values.distribution_channel %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>reserved_room_type</label>
+            <select name="reserved_room_type">
+              {% for v in categorical_values.reserved_room_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>deposit_type</label>
+            <select name="deposit_type">
+              {% for v in categorical_values.deposit_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>customer_type</label>
+            <select name="customer_type">
+              {% for v in categorical_values.customer_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>arrival_date_month</label>
+            <select name="arrival_date_month">
+              {% for v in categorical_values.arrival_date_month %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>country</label>
+            <select name="country">
+              {% for v in categorical_values.country %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div><label>lead_time</label><input type="number" name="lead_time" value="30" min="0"></div>
+          <div><label>arrival_date_week_number</label><input type="number" name="arrival_date_week_number" value="20" min="1" max="53"></div>
+          <div><label>arrival_date_day_of_month</label><input type="number" name="arrival_date_day_of_month" value="15" min="1" max="31"></div>
+          <div><label>stays_in_weekend_nights</label><input type="number" name="stays_in_weekend_nights" value="1" min="0"></div>
+          <div><label>stays_in_week_nights</label><input type="number" name="stays_in_week_nights" value="2" min="0"></div>
+          <div><label>adults</label><input type="number" name="adults" value="2" min="0"></div>
+          <div><label>children</label><input type="number" name="children" value="0" min="0" step="1"></div>
+          <div><label>babies</label><input type="number" name="babies" value="0" min="0"></div>
+          <div><label>is_repeated_guest</label><input type="number" name="is_repeated_guest" value="0" min="0" max="1"></div>
+          <div><label>previous_cancellations</label><input type="number" name="previous_cancellations" value="0" min="0"></div>
+          <div><label>previous_bookings_not_canceled</label><input type="number" name="previous_bookings_not_canceled" value="0" min="0"></div>
+          <div><label>booking_changes</label><input type="number" name="booking_changes" value="0" min="0"></div>
+          <div><label>days_in_waiting_list</label><input type="number" name="days_in_waiting_list" value="0" min="0"></div>
+          <div><label>adr</label><input type="number" name="adr" value="100" min="0" step="0.01"></div>
+          <div><label>required_car_parking_spaces</label><input type="number" name="required_car_parking_spaces" value="0" min="0"></div>
+          <div><label>total_of_special_requests</label><input type="number" name="total_of_special_requests" value="0" min="0"></div>
+          <div>
+            <label>has_company</label>
+            <select name="has_company">
+              <option value="false">No</option>
+              <option value="true">Sí</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit">Predecir probabilidad de cancelación</button>
+      </form>
+      <div id="prediction-result" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Overbooking por lote</h2>
+      <p>Pega una lista JSON de reservas activas para una fecha (mismo formato que la predicción individual) y calcula el % de overbooking recomendado.</p>
+      <label>Fecha objetivo</label>
+      <input id="target-date" value="2026-08-14">
+      <label>Riesgo aceptado (probabilidad de quedarse sin habitación): <span id="risk-value">5</span>%</label>
+      <input id="risk-slider" type="range" min="1" max="20" value="5">
+      <label>Reservas (JSON array)</label>
+      <textarea id="bookings-json" rows="8">[
+  {"hotel": "City Hotel", "meal": "BB", "market_segment": "Online TA", "distribution_channel": "TA/TO", "reserved_room_type": "A", "deposit_type": "No Deposit", "customer_type": "Transient", "arrival_date_month": "August", "country": "PRT", "lead_time": 45, "arrival_date_week_number": 33, "arrival_date_day_of_month": 14, "stays_in_weekend_nights": 2, "stays_in_week_nights": 3, "adults": 2, "children": 0, "babies": 0, "is_repeated_guest": 0, "previous_cancellations": 0, "previous_bookings_not_canceled": 0, "booking_changes": 0, "days_in_waiting_list": 0, "adr": 110.5, "required_car_parking_spaces": 0, "total_of_special_requests": 1, "has_company": false}
+]</textarea>
+      <button id="overbooking-btn">Calcular overbooking</button>
+      <div id="overbooking-result" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Historial</h2>
+      <button id="load-history-btn">Cargar historial reciente</button>
+      <h3>Predicciones</h3>
+      <table id="predictions-table"><thead><tr><th>ID</th><th>Probabilidad</th><th>Fecha</th></tr></thead><tbody></tbody></table>
+      <h3>Overbooking</h3>
+      <table id="overbooking-table"><thead><tr><th>ID</th><th>Fecha objetivo</th><th>Reservas</th><th>Riesgo</th><th>Extra recomendado</th><th>% overbooking</th></tr></thead><tbody></tbody></table>
+    </div>
+  </main>
+
+  <script src="/static/app.js"></script>
+  <script>
+    const keyBox = document.getElementById('api-key-box');
+    const keyStatus = document.getElementById('key-status');
+    keyBox.value = localStorage.getItem('apiKey') || '';
+    keyStatus.textContent = keyBox.value ? 'API key cargada' : 'sin API key';
+
+    document.getElementById('update-key-btn').addEventListener('click', () => {
+      localStorage.setItem('apiKey', keyBox.value.trim());
+      keyStatus.textContent = 'API key actualizada';
+    });
+
+    document.getElementById('risk-slider').addEventListener('input', (e) => {
+      document.getElementById('risk-value').textContent = e.target.value;
+    });
+
+    function formToBooking(form) {
+      const fd = new FormData(form);
+      const booking = {};
+      for (const [key, value] of fd.entries()) {
+        if (['lead_time','arrival_date_week_number','arrival_date_day_of_month','stays_in_weekend_nights',
+             'stays_in_week_nights','adults','babies','is_repeated_guest','previous_cancellations',
+             'previous_bookings_not_canceled','booking_changes','days_in_waiting_list',
+             'required_car_parking_spaces','total_of_special_requests'].includes(key)) {
+          booking[key] = parseInt(value, 10);
+        } else if (['children', 'adr'].includes(key)) {
+          booking[key] = parseFloat(value);
+        } else if (key === 'has_company') {
+          booking[key] = value === 'true';
+        } else {
+          booking[key] = value;
+        }
+      }
+      return booking;
+    }
+
+    document.getElementById('prediction-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const resultBox = document.getElementById('prediction-result');
+      resultBox.style.display = 'block';
+      resultBox.classList.remove('error');
+      try {
+        const booking = formToBooking(e.target);
+        const data = await apiFetch('/predictions', { method: 'POST', body: JSON.stringify(booking) });
+        resultBox.textContent = `Probabilidad de cancelación: ${(data.cancellation_probability * 100).toFixed(1)}%`;
+      } catch (err) {
+        resultBox.classList.add('error');
+        resultBox.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    document.getElementById('overbooking-btn').addEventListener('click', async () => {
+      const resultBox = document.getElementById('overbooking-result');
+      resultBox.style.display = 'block';
+      resultBox.classList.remove('error');
+      try {
+        const bookings = JSON.parse(document.getElementById('bookings-json').value);
+        const payload = {
+          target_date: document.getElementById('target-date').value,
+          risk_alpha: parseInt(document.getElementById('risk-slider').value, 10) / 100,
+          bookings,
+        };
+        const data = await apiFetch('/overbooking', { method: 'POST', body: JSON.stringify(payload) });
+        resultBox.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        resultBox.classList.add('error');
+        resultBox.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    document.getElementById('load-history-btn').addEventListener('click', async () => {
+      try {
+        const predictions = await apiFetch('/history/predictions?limit=20');
+        const predBody = document.querySelector('#predictions-table tbody');
+        predBody.innerHTML = predictions.map(p =>
+          `<tr><td>${p.id}</td><td>${(p.probability*100).toFixed(1)}%</td><td>${p.created_at}</td></tr>`
+        ).join('');
+
+        const overbooking = await apiFetch('/history/overbooking?limit=20');
+        const obBody = document.querySelector('#overbooking-table tbody');
+        obBody.innerHTML = overbooking.map(o =>
+          `<tr><td>${o.id}</td><td>${o.target_date}</td><td>${o.n_bookings}</td><td>${(o.risk_alpha*100).toFixed(0)}%</td><td>${o.recommended_extra}</td><td>${o.recommended_pct}%</td></tr>`
+        ).join('');
+      } catch (err) {
+        alert('Error cargando historial: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>

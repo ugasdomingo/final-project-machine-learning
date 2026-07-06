@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Hotel Overbooking API</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Hotel Overbooking API</h1>
+    <p>Probabilidad de cancelación y % de overbooking recomendado para tu hotel.</p>
+  </header>
+  <main>
+    <div class="card">
+      <h2>1. Registra tu hotel</h2>
+      <p>Obtén una API key para integrar tu sistema de reservas con esta API.</p>
+      <form id="register-form">
+        <div class="grid">
+          <div>
+            <label for="name">Nombre del hotel</label>
+            <input id="name" name="name" required>
+          </div>
+          <div>
+            <label for="email">Email (opcional)</label>
+            <input id="email" name="email" type="email">
+          </div>
+          <div>
+            <label for="total_rooms">Nº de habitaciones</label>
+            <input id="total_rooms" name="total_rooms" type="number" min="1" required>
+          </div>
+        </div>
+        <button type="submit">Registrar</button>
+      </form>
+      <div id="register-result" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Ya tengo API key</h2>
+      <p>Guárdala en este navegador para usar el panel de control.</p>
+      <label for="api-key-input">API key</label>
+      <input id="api-key-input" placeholder="pega aquí tu API key">
+      <button id="save-key-btn">Guardar y abrir dashboard</button>
+    </div>
+
+    <div class="card">
+      <h2>3. Documentación de la API</h2>
+      <p>Los endpoints REST están documentados automáticamente en <a href="/docs" style="color: var(--accent)">/docs</a>. Cualquier sistema externo puede integrar directamente contra esos endpoints usando el header <code>X-API-Key</code>.</p>
+    </div>
+  </main>
+
+  <script src="/static/app.js"></script>
+  <script>
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value || null,
+        total_rooms: parseInt(document.getElementById('total_rooms').value, 10),
+      };
+      const resultBox = document.getElementById('register-result');
+      try {
+        const data = await apiFetch('/hotels', { method: 'POST', body: JSON.stringify(payload) });
+        localStorage.setItem('apiKey', data.api_key);
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = `Hotel registrado. Tu API key (guardada en este navegador):\n<b>${data.api_key}</b>\n\n<a href="/dashboard" style="color: var(--accent)">Ir al dashboard →</a>`;
+      } catch (err) {
+        resultBox.style.display = 'block';
+        resultBox.classList.add('error');
+        resultBox.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    document.getElementById('save-key-btn').addEventListener('click', () => {
+      const key = document.getElementById('api-key-input').value.trim();
+      if (key) {
+        localStorage.setItem('apiKey', key);
+        window.location.href = '/dashboard';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "description": "Percentiles empíricos de dias_desde_la_reserva a los que ocurre una cancelacion, calculados sobre reservas historicamente canceladas. Uso sugerido: si una reserva activa ya supero el percentil 90 sin cancelarse, su probabilidad residual de cancelar es baja.",
+  "percentiles_days": {
+    "50": 26.0,
+    "75": 84.0,
+    "80": 103.0,
+    "90": 167.0,
+    "95": 258.0,
+    "99": 383.0
+  }
+}
