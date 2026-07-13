@@ -1,6 +1,6 @@
 {
   "model_name": "RandomForest_calibrado_final",
-  "trained_at": "2026-07-06T09:57:20.570467+00:00",
+  "trained_at": "2026-07-08T17:38:07.138582+00:00",
   "sklearn_version": "1.8.0",
   "feature_order": [
     "hotel",
@@ -289,7 +289,7 @@
     "precision": 0.8377693282636248,
     "recall": 0.7487539646579067,
     "f1": 0.7907644455078359,
-    "roc_auc": 0.9290180026889786,
+    "roc_auc": 0.9290182684523454,
     "brier_score": 0.10221218955509973
   }
 }
