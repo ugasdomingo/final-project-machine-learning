@@ -1,0 +1,10 @@
+.git
+.claude
+.env
+app.db*
+__pycache__
+**/__pycache__
+Model/data
+Model/src
+*.ipynb
+README.md
