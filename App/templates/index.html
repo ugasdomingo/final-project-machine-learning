@@ -2,33 +2,84 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hotel Overbooking API</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header>
     <h1>Hotel Overbooking API</h1>
-    <p>Probabilidad de cancelación y % de overbooking recomendado para tu hotel.</p>
+    <p>Probabilidad de cancelación de cada reserva y % de overbooking recomendado por sede.</p>
   </header>
   <main>
     <div class="card">
-      <h2>1. Registra tu hotel</h2>
-      <p>Obtén una API key para integrar tu sistema de reservas con esta API.</p>
+      <h2>1. Registra tu empresa y tu primera sede</h2>
+      <p>Una cuenta puede tener varias sedes (hoteles, posadas, propiedades). Obtendrás una API key única para todas.</p>
       <form id="register-form">
+        <h3>Datos de la empresa</h3>
         <div class="grid">
           <div>
-            <label for="name">Nombre del hotel</label>
-            <input id="name" name="name" required>
+            <label for="name">Nombre de la empresa</label>
+            <input id="name" name="name" required placeholder="Hoteles Ejemplo S.L.">
           </div>
           <div>
             <label for="email">Email (opcional)</label>
             <input id="email" name="email" type="email">
           </div>
+        </div>
+
+        <h3>Primera sede</h3>
+        <div class="grid">
+          <div>
+            <label for="sede_name">Nombre de la sede</label>
+            <input id="sede_name" required placeholder="Posada del Mar - Centro">
+          </div>
+          <div>
+            <label for="hotel_type">Tipo de propiedad</label>
+            <select id="hotel_type">
+              {% for v in hotel_types %}<option value="{{ v }}">{{ 'Hotel urbano' if v == 'City Hotel' else 'Resort / vacacional' }}</option>{% endfor %}
+            </select>
+          </div>
           <div>
             <label for="total_rooms">Nº de habitaciones</label>
-            <input id="total_rooms" name="total_rooms" type="number" min="1" required>
+            <input id="total_rooms" type="number" min="1" required>
+          </div>
+          <div>
+            <label for="default_country">País habitual de tus clientes</label>
+            <select id="default_country">
+              {% for code, label in countries %}<option value="{{ code }}" {% if code == 'PRT' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
           </div>
         </div>
+
+        <details>
+          <summary>Perfil opcional de la sede (mejora las predicciones simples)</summary>
+          <div class="grid">
+            <div>
+              <label for="default_meal">Régimen de comidas habitual</label>
+              <select id="default_meal">
+                {% for v in meals %}<option value="{{ v }}" {% if v == 'BB' %}selected{% endif %}>{{ v }}</option>{% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="default_deposit_type">Política de depósito habitual</label>
+              <select id="default_deposit_type">
+                {% for v in deposit_types %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="default_room_type">Tipo de habitación estándar</label>
+              <select id="default_room_type">
+                {% for v in room_types %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="default_adr">Tarifa media por noche (€)</label>
+              <input id="default_adr" type="number" min="1" step="0.01" placeholder="100">
+            </div>
+          </div>
+        </details>
+
         <button type="submit">Registrar</button>
       </form>
       <div id="register-result" class="result" style="display:none;"></div>
@@ -44,7 +95,7 @@
 
     <div class="card">
       <h2>3. Documentación de la API</h2>
-      <p>Los endpoints REST están documentados automáticamente en <a href="/docs" style="color: var(--accent)">/docs</a>. Cualquier sistema externo puede integrar directamente contra esos endpoints usando el header <code>X-API-Key</code>.</p>
+      <p>Los endpoints REST están documentados automáticamente en <a href="/docs" style="color: var(--accent)">/docs</a>. Cualquier sistema externo puede integrar directamente contra esos endpoints usando el header <code>X-API-Key</code>. Para integraciones sencillas usa <code>POST /predictions/simple</code>; para PMS con todos los datos, <code>POST /predictions</code>.</p>
     </div>
   </main>
 
@@ -52,19 +103,29 @@
   <script>
     document.getElementById('register-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const adr = document.getElementById('default_adr').value;
       const payload = {
         name: document.getElementById('name').value,
         email: document.getElementById('email').value || null,
-        total_rooms: parseInt(document.getElementById('total_rooms').value, 10),
+        sede: {
+          name: document.getElementById('sede_name').value,
+          hotel_type: document.getElementById('hotel_type').value,
+          total_rooms: parseInt(document.getElementById('total_rooms').value, 10),
+          default_country: document.getElementById('default_country').value,
+          default_meal: document.getElementById('default_meal').value,
+          default_deposit_type: document.getElementById('default_deposit_type').value,
+          default_room_type: document.getElementById('default_room_type').value,
+          default_adr: adr ? parseFloat(adr) : null,
+        },
       };
       const resultBox = document.getElementById('register-result');
+      resultBox.style.display = 'block';
+      resultBox.classList.remove('error');
       try {
-        const data = await apiFetch('/hotels', { method: 'POST', body: JSON.stringify(payload) });
+        const data = await apiFetch('/accounts', { method: 'POST', body: JSON.stringify(payload) });
         localStorage.setItem('apiKey', data.api_key);
-        resultBox.style.display = 'block';
-        resultBox.innerHTML = `Hotel registrado. Tu API key (guardada en este navegador):\n<b>${data.api_key}</b>\n\n<a href="/dashboard" style="color: var(--accent)">Ir al dashboard →</a>`;
+        resultBox.innerHTML = `Empresa registrada con su primera sede. Tu API key (guardada en este navegador):\n<b>${data.api_key}</b>\n\nGuárdala en un sitio seguro: solo se muestra esta vez.\n<a href="/dashboard" style="color: var(--accent)">Ir al dashboard →</a>`;
       } catch (err) {
-        resultBox.style.display = 'block';
         resultBox.classList.add('error');
         resultBox.textContent = 'Error: ' + err.message;
       }

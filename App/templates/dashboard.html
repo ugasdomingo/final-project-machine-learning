@@ -2,136 +2,227 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard - Hotel Overbooking API</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header>
     <h1>Dashboard</h1>
-    <p>Predicción individual, cálculo de overbooking por lote e historial.</p>
+    <p>Predice cancelaciones con un formulario corto y calcula el overbooking de cada sede sin pegar JSON.</p>
   </header>
   <main>
     <div class="card">
       <h2>API key activa</h2>
-      <input id="api-key-box" placeholder="pega tu API key">
-      <button id="update-key-btn">Usar esta API key</button>
-      <span class="pill" id="key-status"></span>
+      <div class="grid">
+        <div>
+          <input id="api-key-box" placeholder="pega tu API key">
+        </div>
+        <div>
+          <button id="update-key-btn">Usar esta API key</button>
+          <span class="pill" id="key-status"></span>
+        </div>
+      </div>
     </div>
 
     <div class="card">
-      <h2>Predicción individual</h2>
-      <form id="prediction-form">
-        <div class="grid">
-          <div>
-            <label>hotel</label>
-            <select name="hotel">
-              {% for v in categorical_values.hotel %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div>
-            <label>meal</label>
-            <select name="meal">
-              {% for v in categorical_values.meal %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div>
-            <label>market_segment</label>
-            <select name="market_segment">
-              {% for v in categorical_values.market_segment %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div>
-            <label>distribution_channel</label>
-            <select name="distribution_channel">
-              {% for v in categorical_values.distribution_channel %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div>
-            <label>reserved_room_type</label>
-            <select name="reserved_room_type">
-              {% for v in categorical_values.reserved_room_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div>
-            <label>deposit_type</label>
-            <select name="deposit_type">
-              {% for v in categorical_values.deposit_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div>
-            <label>customer_type</label>
-            <select name="customer_type">
-              {% for v in categorical_values.customer_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div>
-            <label>arrival_date_month</label>
-            <select name="arrival_date_month">
-              {% for v in categorical_values.arrival_date_month %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div>
-            <label>country</label>
-            <select name="country">
-              {% for v in categorical_values.country %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-            </select>
-          </div>
-          <div><label>lead_time</label><input type="number" name="lead_time" value="30" min="0"></div>
-          <div><label>arrival_date_week_number</label><input type="number" name="arrival_date_week_number" value="20" min="1" max="53"></div>
-          <div><label>arrival_date_day_of_month</label><input type="number" name="arrival_date_day_of_month" value="15" min="1" max="31"></div>
-          <div><label>stays_in_weekend_nights</label><input type="number" name="stays_in_weekend_nights" value="1" min="0"></div>
-          <div><label>stays_in_week_nights</label><input type="number" name="stays_in_week_nights" value="2" min="0"></div>
-          <div><label>adults</label><input type="number" name="adults" value="2" min="0"></div>
-          <div><label>children</label><input type="number" name="children" value="0" min="0" step="1"></div>
-          <div><label>babies</label><input type="number" name="babies" value="0" min="0"></div>
-          <div><label>is_repeated_guest</label><input type="number" name="is_repeated_guest" value="0" min="0" max="1"></div>
-          <div><label>previous_cancellations</label><input type="number" name="previous_cancellations" value="0" min="0"></div>
-          <div><label>previous_bookings_not_canceled</label><input type="number" name="previous_bookings_not_canceled" value="0" min="0"></div>
-          <div><label>booking_changes</label><input type="number" name="booking_changes" value="0" min="0"></div>
-          <div><label>days_in_waiting_list</label><input type="number" name="days_in_waiting_list" value="0" min="0"></div>
-          <div><label>adr</label><input type="number" name="adr" value="100" min="0" step="0.01"></div>
-          <div><label>required_car_parking_spaces</label><input type="number" name="required_car_parking_spaces" value="0" min="0"></div>
-          <div><label>total_of_special_requests</label><input type="number" name="total_of_special_requests" value="0" min="0"></div>
-          <div>
-            <label>has_company</label>
-            <select name="has_company">
-              <option value="false">No</option>
-              <option value="true">Sí</option>
-            </select>
-          </div>
+      <h2>Sede activa</h2>
+      <p>Todas las predicciones y cálculos se asocian a la sede seleccionada.</p>
+      <div class="grid">
+        <div>
+          <label for="sede-select">Sede</label>
+          <select id="sede-select"></select>
         </div>
+        <div>
+          <span class="pill" id="sede-info"></span>
+        </div>
+      </div>
+      <details>
+        <summary>＋ Añadir otra sede</summary>
+        <div class="grid">
+          <div><label>Nombre de la sede</label><input id="new-sede-name" placeholder="Posada del Mar - Playa"></div>
+          <div>
+            <label>Tipo de propiedad</label>
+            <select id="new-sede-type">
+              {% for v in categorical_values.hotel %}<option value="{{ v }}">{{ 'Hotel urbano' if v == 'City Hotel' else 'Resort / vacacional' }}</option>{% endfor %}
+            </select>
+          </div>
+          <div><label>Nº de habitaciones</label><input id="new-sede-rooms" type="number" min="1"></div>
+          <div>
+            <label>País habitual de clientes</label>
+            <select id="new-sede-country">
+              {% for code, label in countries %}<option value="{{ code }}" {% if code == 'PRT' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div><label>Tarifa media por noche (€)</label><input id="new-sede-adr" type="number" min="1" step="0.01" placeholder="100"></div>
+        </div>
+        <button id="add-sede-btn">Crear sede</button>
+        <div id="add-sede-result" class="result" style="display:none;"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Predicción de cancelación</h2>
+      <p>Rellena lo que sabes de la reserva; el resto se deduce de las fechas y del perfil de la sede.</p>
+      <form id="simple-form">
+        <div class="grid">
+          <div><label>Fecha en que se hizo la reserva</label><input type="date" id="sf-booking-date" required></div>
+          <div><label>Fecha de entrada (check-in)</label><input type="date" id="sf-checkin" required></div>
+          <div><label>Fecha de salida (check-out)</label><input type="date" id="sf-checkout" required></div>
+          <div>
+            <label>¿Cómo llegó la reserva?</label>
+            <select id="sf-channel">
+              {% for key, label in channels.items() %}<option value="{{ key }}" {% if key == 'ota' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div><label>Adultos</label><input type="number" id="sf-adults" value="2" min="1"></div>
+          <div><label>Niños</label><input type="number" id="sf-children" value="0" min="0"></div>
+          <div><label>Bebés</label><input type="number" id="sf-babies" value="0" min="0"></div>
+          <div><label>Precio por noche (€) <small>(vacío = tarifa media de la sede)</small></label><input type="number" id="sf-price" min="1" step="0.01" placeholder="tarifa media"></div>
+          <div>
+            <label>País del cliente <small>(vacío = habitual de la sede)</small></label>
+            <select id="sf-country">
+              <option value="">— usar el de la sede —</option>
+              {% for code, label in countries %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>¿Cliente repetido?</label>
+            <select id="sf-repeated"><option value="false">No</option><option value="true">Sí</option></select>
+          </div>
+          <div><label>Cancelaciones previas del cliente</label><input type="number" id="sf-prev-cancel" value="0" min="0"></div>
+          <div><label>Peticiones especiales</label><input type="number" id="sf-requests" value="0" min="0"></div>
+        </div>
+        <details>
+          <summary>Ajustes opcionales (habitación, régimen, depósito, parking)</summary>
+          <div class="grid">
+            <div>
+              <label>Tipo de habitación</label>
+              <select id="sf-room"><option value="">— estándar de la sede —</option>
+                {% for v in categorical_values.reserved_room_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+              </select>
+            </div>
+            <div>
+              <label>Régimen de comidas</label>
+              <select id="sf-meal"><option value="">— habitual de la sede —</option>
+                {% for v in categorical_values.meal %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+              </select>
+            </div>
+            <div>
+              <label>Depósito</label>
+              <select id="sf-deposit"><option value="">— política de la sede —</option>
+                {% for v in categorical_values.deposit_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+              </select>
+            </div>
+            <div><label>Plazas de parking</label><input type="number" id="sf-parking" value="0" min="0"></div>
+          </div>
+        </details>
         <button type="submit">Predecir probabilidad de cancelación</button>
       </form>
       <div id="prediction-result" class="result" style="display:none;"></div>
+
+      <details style="margin-top:1rem;">
+        <summary>Modo avanzado: introducir las 26 variables del modelo</summary>
+        <form id="advanced-form">
+          <div class="grid">
+            <div><label>Fecha de llegada (para overbooking)</label><input type="date" name="__arrival_date"></div>
+            <div>
+              <label>hotel</label>
+              <select name="hotel">{% for v in categorical_values.hotel %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label>meal</label>
+              <select name="meal">{% for v in categorical_values.meal %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label>market_segment</label>
+              <select name="market_segment">{% for v in categorical_values.market_segment %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label>distribution_channel</label>
+              <select name="distribution_channel">{% for v in categorical_values.distribution_channel %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label>reserved_room_type</label>
+              <select name="reserved_room_type">{% for v in categorical_values.reserved_room_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label>deposit_type</label>
+              <select name="deposit_type">{% for v in categorical_values.deposit_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label>customer_type</label>
+              <select name="customer_type">{% for v in categorical_values.customer_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label>arrival_date_month</label>
+              <select name="arrival_date_month">{% for v in categorical_values.arrival_date_month %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div>
+              <label>country</label>
+              <select name="country">{% for v in categorical_values.country %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
+            </div>
+            <div><label>lead_time</label><input type="number" name="lead_time" value="30" min="0"></div>
+            <div><label>arrival_date_week_number</label><input type="number" name="arrival_date_week_number" value="20" min="1" max="53"></div>
+            <div><label>arrival_date_day_of_month</label><input type="number" name="arrival_date_day_of_month" value="15" min="1" max="31"></div>
+            <div><label>stays_in_weekend_nights</label><input type="number" name="stays_in_weekend_nights" value="1" min="0"></div>
+            <div><label>stays_in_week_nights</label><input type="number" name="stays_in_week_nights" value="2" min="0"></div>
+            <div><label>adults</label><input type="number" name="adults" value="2" min="0"></div>
+            <div><label>children</label><input type="number" name="children" value="0" min="0" step="1"></div>
+            <div><label>babies</label><input type="number" name="babies" value="0" min="0"></div>
+            <div><label>is_repeated_guest</label><input type="number" name="is_repeated_guest" value="0" min="0" max="1"></div>
+            <div><label>previous_cancellations</label><input type="number" name="previous_cancellations" value="0" min="0"></div>
+            <div><label>previous_bookings_not_canceled</label><input type="number" name="previous_bookings_not_canceled" value="0" min="0"></div>
+            <div><label>booking_changes</label><input type="number" name="booking_changes" value="0" min="0"></div>
+            <div><label>days_in_waiting_list</label><input type="number" name="days_in_waiting_list" value="0" min="0"></div>
+            <div><label>adr</label><input type="number" name="adr" value="100" min="0" step="0.01"></div>
+            <div><label>required_car_parking_spaces</label><input type="number" name="required_car_parking_spaces" value="0" min="0"></div>
+            <div><label>total_of_special_requests</label><input type="number" name="total_of_special_requests" value="0" min="0"></div>
+            <div>
+              <label>has_company</label>
+              <select name="has_company"><option value="false">No</option><option value="true">Sí</option></select>
+            </div>
+          </div>
+          <button type="submit">Predecir (avanzado)</button>
+        </form>
+        <div id="advanced-result" class="result" style="display:none;"></div>
+      </details>
     </div>
 
     <div class="card">
-      <h2>Overbooking por lote</h2>
-      <p>Pega una lista JSON de reservas activas para una fecha (mismo formato que la predicción individual) y calcula el % de overbooking recomendado.</p>
-      <label>Fecha objetivo</label>
-      <input id="target-date" value="2026-08-14">
-      <label>Riesgo aceptado (probabilidad de quedarse sin habitación): <span id="risk-value">5</span>%</label>
-      <input id="risk-slider" type="range" min="1" max="20" value="5">
-      <label>Reservas (JSON array)</label>
-      <textarea id="bookings-json" rows="8">[
-  {"hotel": "City Hotel", "meal": "BB", "market_segment": "Online TA", "distribution_channel": "TA/TO", "reserved_room_type": "A", "deposit_type": "No Deposit", "customer_type": "Transient", "arrival_date_month": "August", "country": "PRT", "lead_time": 45, "arrival_date_week_number": 33, "arrival_date_day_of_month": 14, "stays_in_weekend_nights": 2, "stays_in_week_nights": 3, "adults": 2, "children": 0, "babies": 0, "is_repeated_guest": 0, "previous_cancellations": 0, "previous_bookings_not_canceled": 0, "booking_changes": 0, "days_in_waiting_list": 0, "adr": 110.5, "required_car_parking_spaces": 0, "total_of_special_requests": 1, "has_company": false}
-]</textarea>
-      <button id="overbooking-btn">Calcular overbooking</button>
+      <h2>Overbooking para una fecha</h2>
+      <p>Usa las predicciones ya guardadas de la sede activa: registra las reservas de una fecha y calcula cuántas reservas extra puedes aceptar (lista de espera).</p>
+      <div class="grid">
+        <div><label>Fecha objetivo (día de llegada)</label><input type="date" id="ob-date"></div>
+        <div>
+          <label>Riesgo aceptado de sobrevender: <span id="risk-value">5</span>%</label>
+          <input id="risk-slider" type="range" min="1" max="20" value="5">
+        </div>
+      </div>
+      <button id="overbooking-btn">Calcular overbooking de la sede</button>
       <div id="overbooking-result" class="result" style="display:none;"></div>
+
+      <details style="margin-top:1rem;">
+        <summary>Alternativa: pegar lote de reservas en JSON (integraciones)</summary>
+        <label>Reservas (JSON array con las 26 variables por reserva)</label>
+        <textarea id="bookings-json" rows="6" placeholder='[{"hotel": "City Hotel", ...}]'></textarea>
+        <button id="overbooking-json-btn">Calcular con este lote</button>
+      </details>
     </div>
 
     <div class="card">
       <h2>Historial</h2>
       <button id="load-history-btn">Cargar historial reciente</button>
       <h3>Predicciones</h3>
-      <table id="predictions-table"><thead><tr><th>ID</th><th>Probabilidad</th><th>Fecha</th></tr></thead><tbody></tbody></table>
+      <table id="predictions-table"><thead><tr><th>ID</th><th>Sede</th><th>Llegada</th><th>Probabilidad</th><th>Riesgo</th><th>Registrada</th></tr></thead><tbody></tbody></table>
       <h3>Overbooking</h3>
-      <table id="overbooking-table"><thead><tr><th>ID</th><th>Fecha objetivo</th><th>Reservas</th><th>Riesgo</th><th>Extra recomendado</th><th>% overbooking</th></tr></thead><tbody></tbody></table>
+      <table id="overbooking-table"><thead><tr><th>ID</th><th>Sede</th><th>Fecha objetivo</th><th>Reservas</th><th>Riesgo aceptado</th><th>Extra recomendado</th><th>% overbooking</th></tr></thead><tbody></tbody></table>
     </div>
   </main>
 
   <script src="/static/app.js"></script>
   <script>
+    // ---- API key ----
     const keyBox = document.getElementById('api-key-box');
     const keyStatus = document.getElementById('key-status');
     keyBox.value = localStorage.getItem('apiKey') || '';
@@ -140,78 +231,211 @@
     document.getElementById('update-key-btn').addEventListener('click', () => {
       localStorage.setItem('apiKey', keyBox.value.trim());
       keyStatus.textContent = 'API key actualizada';
+      loadSedes();
     });
 
-    document.getElementById('risk-slider').addEventListener('input', (e) => {
-      document.getElementById('risk-value').textContent = e.target.value;
-    });
+    // ---- Sedes ----
+    const sedeSelect = document.getElementById('sede-select');
+    const sedeInfo = document.getElementById('sede-info');
+    let sedes = [];
 
-    function formToBooking(form) {
-      const fd = new FormData(form);
-      const booking = {};
-      for (const [key, value] of fd.entries()) {
-        if (['lead_time','arrival_date_week_number','arrival_date_day_of_month','stays_in_weekend_nights',
-             'stays_in_week_nights','adults','babies','is_repeated_guest','previous_cancellations',
-             'previous_bookings_not_canceled','booking_changes','days_in_waiting_list',
-             'required_car_parking_spaces','total_of_special_requests'].includes(key)) {
-          booking[key] = parseInt(value, 10);
-        } else if (['children', 'adr'].includes(key)) {
-          booking[key] = parseFloat(value);
-        } else if (key === 'has_company') {
-          booking[key] = value === 'true';
-        } else {
-          booking[key] = value;
-        }
-      }
-      return booking;
+    function activeSede() {
+      return sedes.find(s => s.id === parseInt(sedeSelect.value, 10));
     }
 
-    document.getElementById('prediction-form').addEventListener('submit', async (e) => {
+    function renderSedeInfo() {
+      const s = activeSede();
+      sedeInfo.textContent = s ? `${s.hotel_type} · ${s.total_rooms} habitaciones` : '';
+    }
+
+    async function loadSedes() {
+      try {
+        sedes = await apiFetch('/sedes');
+        sedeSelect.innerHTML = sedes.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        renderSedeInfo();
+      } catch (err) {
+        sedeSelect.innerHTML = '';
+        sedeInfo.textContent = 'No se pudieron cargar las sedes: ' + err.message;
+      }
+    }
+    sedeSelect.addEventListener('change', renderSedeInfo);
+    loadSedes();
+
+    document.getElementById('add-sede-btn').addEventListener('click', async () => {
+      const resultBox = document.getElementById('add-sede-result');
+      resultBox.style.display = 'block';
+      resultBox.classList.remove('error');
+      const adr = document.getElementById('new-sede-adr').value;
+      try {
+        const sede = await apiFetch('/sedes', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: document.getElementById('new-sede-name').value,
+            hotel_type: document.getElementById('new-sede-type').value,
+            total_rooms: parseInt(document.getElementById('new-sede-rooms').value, 10),
+            default_country: document.getElementById('new-sede-country').value,
+            default_adr: adr ? parseFloat(adr) : null,
+          }),
+        });
+        resultBox.textContent = `Sede "${sede.name}" creada.`;
+        await loadSedes();
+        sedeSelect.value = sede.id;
+        renderSedeInfo();
+      } catch (err) {
+        resultBox.classList.add('error');
+        resultBox.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    // ---- Fechas por defecto ----
+    function isoDate(d) { return d.toISOString().slice(0, 10); }
+    const today = new Date();
+    const in30 = new Date(today); in30.setDate(today.getDate() + 30);
+    const in33 = new Date(today); in33.setDate(today.getDate() + 33);
+    document.getElementById('sf-booking-date').value = isoDate(today);
+    document.getElementById('sf-checkin').value = isoDate(in30);
+    document.getElementById('sf-checkout').value = isoDate(in33);
+    document.getElementById('ob-date').value = isoDate(in30);
+
+    // ---- Predicción simple ----
+    function showPrediction(box, data) {
+      box.style.display = 'block';
+      box.classList.remove('error');
+      const pct = (data.cancellation_probability * 100).toFixed(1);
+      box.innerHTML = `<span class="big-number risk-${data.risk_level}">${pct}%</span>` +
+        `<span class="pill risk-${data.risk_level}">riesgo ${data.risk_level}</span>\n${data.message}`;
+    }
+
+    document.getElementById('simple-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const resultBox = document.getElementById('prediction-result');
       resultBox.style.display = 'block';
       resultBox.classList.remove('error');
       try {
-        const booking = formToBooking(e.target);
-        const data = await apiFetch('/predictions', { method: 'POST', body: JSON.stringify(booking) });
-        resultBox.textContent = `Probabilidad de cancelación: ${(data.cancellation_probability * 100).toFixed(1)}%`;
+        if (!sedeSelect.value) throw new Error('Selecciona una sede (¿API key correcta?)');
+        const price = document.getElementById('sf-price').value;
+        const payload = {
+          sede_id: parseInt(sedeSelect.value, 10),
+          booking_date: document.getElementById('sf-booking-date').value,
+          checkin_date: document.getElementById('sf-checkin').value,
+          checkout_date: document.getElementById('sf-checkout').value,
+          adults: parseInt(document.getElementById('sf-adults').value, 10),
+          children: parseInt(document.getElementById('sf-children').value, 10),
+          babies: parseInt(document.getElementById('sf-babies').value, 10),
+          channel: document.getElementById('sf-channel').value,
+          price_per_night: price ? parseFloat(price) : null,
+          country: document.getElementById('sf-country').value || null,
+          room_type: document.getElementById('sf-room').value || null,
+          meal: document.getElementById('sf-meal').value || null,
+          deposit_type: document.getElementById('sf-deposit').value || null,
+          is_repeated_guest: document.getElementById('sf-repeated').value === 'true',
+          previous_cancellations: parseInt(document.getElementById('sf-prev-cancel').value, 10),
+          special_requests: parseInt(document.getElementById('sf-requests').value, 10),
+          parking_spaces: parseInt(document.getElementById('sf-parking').value, 10),
+        };
+        const data = await apiFetch('/predictions/simple', { method: 'POST', body: JSON.stringify(payload) });
+        showPrediction(resultBox, data);
       } catch (err) {
         resultBox.classList.add('error');
         resultBox.textContent = 'Error: ' + err.message;
       }
     });
 
-    document.getElementById('overbooking-btn').addEventListener('click', async () => {
-      const resultBox = document.getElementById('overbooking-result');
+    // ---- Predicción avanzada ----
+    const INT_FIELDS = ['lead_time','arrival_date_week_number','arrival_date_day_of_month','stays_in_weekend_nights',
+      'stays_in_week_nights','adults','babies','is_repeated_guest','previous_cancellations',
+      'previous_bookings_not_canceled','booking_changes','days_in_waiting_list',
+      'required_car_parking_spaces','total_of_special_requests'];
+
+    document.getElementById('advanced-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const resultBox = document.getElementById('advanced-result');
       resultBox.style.display = 'block';
       resultBox.classList.remove('error');
       try {
+        if (!sedeSelect.value) throw new Error('Selecciona una sede (¿API key correcta?)');
+        const fd = new FormData(e.target);
+        const booking = {};
+        let arrivalDate = null;
+        for (const [key, value] of fd.entries()) {
+          if (key === '__arrival_date') { arrivalDate = value || null; }
+          else if (INT_FIELDS.includes(key)) { booking[key] = parseInt(value, 10); }
+          else if (['children', 'adr'].includes(key)) { booking[key] = parseFloat(value); }
+          else if (key === 'has_company') { booking[key] = value === 'true'; }
+          else { booking[key] = value; }
+        }
+        const payload = { sede_id: parseInt(sedeSelect.value, 10), arrival_date: arrivalDate, booking };
+        const data = await apiFetch('/predictions', { method: 'POST', body: JSON.stringify(payload) });
+        showPrediction(resultBox, data);
+      } catch (err) {
+        resultBox.classList.add('error');
+        resultBox.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    // ---- Overbooking ----
+    document.getElementById('risk-slider').addEventListener('input', (e) => {
+      document.getElementById('risk-value').textContent = e.target.value;
+    });
+
+    function showOverbooking(data) {
+      const box = document.getElementById('overbooking-result');
+      box.style.display = 'block';
+      box.classList.remove('error');
+      box.innerHTML = `<span class="big-number">${data.recommended_extra_bookings} reservas extra</span>` +
+        `<span class="pill">${data.recommended_overbooking_pct}% de overbooking</span>\n${data.message}`;
+    }
+
+    function showOverbookingError(err) {
+      const box = document.getElementById('overbooking-result');
+      box.style.display = 'block';
+      box.classList.add('error');
+      box.textContent = 'Error: ' + err.message;
+    }
+
+    document.getElementById('overbooking-btn').addEventListener('click', async () => {
+      try {
+        if (!sedeSelect.value) throw new Error('Selecciona una sede (¿API key correcta?)');
+        const payload = {
+          sede_id: parseInt(sedeSelect.value, 10),
+          target_date: document.getElementById('ob-date').value,
+          risk_alpha: parseInt(document.getElementById('risk-slider').value, 10) / 100,
+        };
+        const data = await apiFetch('/overbooking/from-predictions', { method: 'POST', body: JSON.stringify(payload) });
+        showOverbooking(data);
+      } catch (err) { showOverbookingError(err); }
+    });
+
+    document.getElementById('overbooking-json-btn').addEventListener('click', async () => {
+      try {
+        if (!sedeSelect.value) throw new Error('Selecciona una sede (¿API key correcta?)');
         const bookings = JSON.parse(document.getElementById('bookings-json').value);
         const payload = {
-          target_date: document.getElementById('target-date').value,
+          sede_id: parseInt(sedeSelect.value, 10),
+          target_date: document.getElementById('ob-date').value,
           risk_alpha: parseInt(document.getElementById('risk-slider').value, 10) / 100,
           bookings,
         };
         const data = await apiFetch('/overbooking', { method: 'POST', body: JSON.stringify(payload) });
-        resultBox.textContent = JSON.stringify(data, null, 2);
-      } catch (err) {
-        resultBox.classList.add('error');
-        resultBox.textContent = 'Error: ' + err.message;
-      }
+        showOverbooking(data);
+      } catch (err) { showOverbookingError(err); }
     });
 
+    // ---- Historial ----
     document.getElementById('load-history-btn').addEventListener('click', async () => {
       try {
         const predictions = await apiFetch('/history/predictions?limit=20');
-        const predBody = document.querySelector('#predictions-table tbody');
-        predBody.innerHTML = predictions.map(p =>
-          `<tr><td>${p.id}</td><td>${(p.probability*100).toFixed(1)}%</td><td>${p.created_at}</td></tr>`
+        document.querySelector('#predictions-table tbody').innerHTML = predictions.map(p =>
+          `<tr><td>${p.id}</td><td>${p.sede_name}</td><td>${p.arrival_date || '—'}</td>` +
+          `<td>${(p.probability * 100).toFixed(1)}%</td>` +
+          `<td><span class="pill risk-${p.risk_level || ''}">${p.risk_level || '—'}</span></td>` +
+          `<td>${new Date(p.created_at).toLocaleString()}</td></tr>`
         ).join('');
 
         const overbooking = await apiFetch('/history/overbooking?limit=20');
-        const obBody = document.querySelector('#overbooking-table tbody');
-        obBody.innerHTML = overbooking.map(o =>
-          `<tr><td>${o.id}</td><td>${o.target_date}</td><td>${o.n_bookings}</td><td>${(o.risk_alpha*100).toFixed(0)}%</td><td>${o.recommended_extra}</td><td>${o.recommended_pct}%</td></tr>`
+        document.querySelector('#overbooking-table tbody').innerHTML = overbooking.map(o =>
+          `<tr><td>${o.id}</td><td>${o.sede_name}</td><td>${o.target_date}</td><td>${o.n_bookings}</td>` +
+          `<td>${(o.risk_alpha * 100).toFixed(0)}%</td><td>${o.recommended_extra}</td><td>${o.recommended_pct}%</td></tr>`
         ).join('');
       } catch (err) {
         alert('Error cargando historial: ' + err.message);

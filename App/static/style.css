@@ -116,3 +116,37 @@ th, td {
 }
 
 .error { color: #f87171; }
+
+details {
+  margin: 0.75rem 0;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+details[open] summary { margin-bottom: 0.75rem; }
+
+.card h3 {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 1rem 0 0.5rem;
+}
+
+label small { color: var(--muted); font-weight: normal; }
+
+.big-number {
+  display: inline-block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-right: 0.75rem;
+}
+
+.risk-bajo { color: var(--ok); border-color: var(--ok); }
+.risk-medio { color: var(--warn); border-color: var(--warn); }
+.risk-alto { color: #f87171; border-color: #f87171; }
