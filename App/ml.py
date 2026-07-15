@@ -37,7 +37,21 @@ CHANNEL_LABELS = {
     "grupo": "Grupo / evento",
 }
 
+MEAL_LABELS = {
+    "BB": "Solo desayuno (BB)",
+    "HB": "Media pensión (HB)",
+    "FB": "Pensión completa (FB)",
+    "SC": "Sin comidas (SC)",
+}
+
 RISK_LEVELS = [(0.30, "bajo"), (0.60, "medio"), (1.01, "alto")]
+
+# El dataset contiene patrones "perfectos" (p. ej. ninguna reserva con parking
+# se canceló jamás) que llevan al modelo calibrado a devolver 0% o 100% exactos.
+# Una predicción nunca debe afirmar certeza absoluta, así que la probabilidad
+# servida se acota a este rango.
+PROB_FLOOR = 0.01
+PROB_CEILING = 0.99
 
 
 def risk_level(probability: float) -> str:
@@ -50,7 +64,7 @@ def risk_level(probability: float) -> str:
 def expand_simple_booking(simple: dict, sede) -> dict:
     """
     Convierte los campos que un recepcionista conoce (fechas, huéspedes, canal)
-    en las 26 features que espera el pipeline, usando el perfil de la sede
+    en las 23 features que espera el pipeline v2, usando el perfil de la sede
     para los valores no informados.
     """
     checkin: date = simple["checkin_date"]
@@ -75,8 +89,6 @@ def expand_simple_booking(simple: dict, sede) -> dict:
         "meal": simple.get("meal") or sede.default_meal,
         "market_segment": channel["market_segment"],
         "distribution_channel": channel["distribution_channel"],
-        "reserved_room_type": simple.get("room_type") or sede.default_room_type,
-        "deposit_type": simple.get("deposit_type") or sede.default_deposit_type,
         "customer_type": "Group" if simple["channel"] == "grupo" else "Transient",
         "arrival_date_month": calendar.month_name[checkin.month],
         "country": simple.get("country") or sede.default_country,
@@ -92,7 +104,6 @@ def expand_simple_booking(simple: dict, sede) -> dict:
         "previous_cancellations": simple.get("previous_cancellations", 0),
         "previous_bookings_not_canceled": 1 if repeated else 0,
         "booking_changes": 0,
-        "days_in_waiting_list": 0,
         "adr": simple.get("price_per_night") or sede.default_adr or 100.0,
         "required_car_parking_spaces": simple.get("parking_spaces", 0),
         "total_of_special_requests": simple.get("special_requests", 0),
@@ -102,7 +113,8 @@ def expand_simple_booking(simple: dict, sede) -> dict:
 
 def predict_probability(booking: dict) -> float:
     row = pd.DataFrame([{col: booking[col] for col in FEATURE_ORDER}])
-    return float(pipeline.predict_proba(row)[0, 1])
+    probability = float(pipeline.predict_proba(row)[0, 1])
+    return min(max(probability, PROB_FLOOR), PROB_CEILING)
 
 
 def recommend_overbooking(probs, risk_alpha: float = 0.05, total_rooms: Optional[int] = None) -> dict:

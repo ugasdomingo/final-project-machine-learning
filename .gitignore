@@ -6,3 +6,6 @@ __pycache__/
 .venv/
 venv/
 .claude/
+
+# Notas privadas (no subir al repo)
+NOTAS_PRIVADAS_*.md

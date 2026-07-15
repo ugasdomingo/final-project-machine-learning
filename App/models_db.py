@@ -1,6 +1,16 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -40,8 +50,6 @@ class Sede(Base):
     # Perfil: valores por defecto que rellenan la predicción simple.
     default_country = Column(String, nullable=False, default="PRT")
     default_meal = Column(String, nullable=False, default="BB")
-    default_deposit_type = Column(String, nullable=False, default="No Deposit")
-    default_room_type = Column(String, nullable=False, default="A")
     default_adr = Column(Float, nullable=True)
 
     created_at = Column(DateTime, default=_now)
@@ -53,9 +61,17 @@ class Sede(Base):
 
 class PredictionRecord(Base):
     __tablename__ = "predictions"
+    # Cada reserva es única dentro de su sede: repetir el número actualiza la
+    # predicción existente en vez de duplicarla.
+    __table_args__ = (
+        UniqueConstraint("sede_id", "booking_reference", name="uq_predictions_sede_reference"),
+    )
 
     id = Column(Integer, primary_key=True)
     sede_id = Column(Integer, ForeignKey("sedes.id"), nullable=False, index=True)
+    # Número/localizador de la reserva tal como lo maneja el hotel, para que el
+    # historial sea reconocible y el hotel pueda ubicar los datos del huésped.
+    booking_reference = Column(String, nullable=False)
     arrival_date = Column(Date, nullable=True, index=True)
     input_json = Column(Text, nullable=False)
     probability = Column(Float, nullable=False)

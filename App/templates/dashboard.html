@@ -66,6 +66,7 @@
       <p>Rellena lo que sabes de la reserva; el resto se deduce de las fechas y del perfil de la sede.</p>
       <form id="simple-form">
         <div class="grid">
+          <div><label>Nº de reserva <small>(el tuyo o el de Booking)</small></label><input id="sf-reference" maxlength="50" required placeholder="ej. RES-2026-0135"></div>
           <div><label>Fecha en que se hizo la reserva</label><input type="date" id="sf-booking-date" required></div>
           <div><label>Fecha de entrada (check-in)</label><input type="date" id="sf-checkin" required></div>
           <div><label>Fecha de salida (check-out)</label><input type="date" id="sf-checkout" required></div>
@@ -94,24 +95,12 @@
           <div><label>Peticiones especiales</label><input type="number" id="sf-requests" value="0" min="0"></div>
         </div>
         <details>
-          <summary>Ajustes opcionales (habitación, régimen, depósito, parking)</summary>
+          <summary>Ajustes opcionales (régimen de comidas, parking)</summary>
           <div class="grid">
-            <div>
-              <label>Tipo de habitación</label>
-              <select id="sf-room"><option value="">— estándar de la sede —</option>
-                {% for v in categorical_values.reserved_room_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-              </select>
-            </div>
             <div>
               <label>Régimen de comidas</label>
               <select id="sf-meal"><option value="">— habitual de la sede —</option>
-                {% for v in categorical_values.meal %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
-              </select>
-            </div>
-            <div>
-              <label>Depósito</label>
-              <select id="sf-deposit"><option value="">— política de la sede —</option>
-                {% for v in categorical_values.deposit_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+                {% for code, label in meal_labels.items() %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
               </select>
             </div>
             <div><label>Plazas de parking</label><input type="number" id="sf-parking" value="0" min="0"></div>
@@ -122,9 +111,10 @@
       <div id="prediction-result" class="result" style="display:none;"></div>
 
       <details style="margin-top:1rem;">
-        <summary>Modo avanzado: introducir las 26 variables del modelo</summary>
+        <summary>Modo avanzado: introducir las 23 variables del modelo</summary>
         <form id="advanced-form">
           <div class="grid">
+            <div><label>Nº de reserva</label><input name="__booking_reference" maxlength="50" required></div>
             <div><label>Fecha de llegada (para overbooking)</label><input type="date" name="__arrival_date"></div>
             <div>
               <label>hotel</label>
@@ -141,14 +131,6 @@
             <div>
               <label>distribution_channel</label>
               <select name="distribution_channel">{% for v in categorical_values.distribution_channel %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
-            </div>
-            <div>
-              <label>reserved_room_type</label>
-              <select name="reserved_room_type">{% for v in categorical_values.reserved_room_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
-            </div>
-            <div>
-              <label>deposit_type</label>
-              <select name="deposit_type">{% for v in categorical_values.deposit_type %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select>
             </div>
             <div>
               <label>customer_type</label>
@@ -174,7 +156,6 @@
             <div><label>previous_cancellations</label><input type="number" name="previous_cancellations" value="0" min="0"></div>
             <div><label>previous_bookings_not_canceled</label><input type="number" name="previous_bookings_not_canceled" value="0" min="0"></div>
             <div><label>booking_changes</label><input type="number" name="booking_changes" value="0" min="0"></div>
-            <div><label>days_in_waiting_list</label><input type="number" name="days_in_waiting_list" value="0" min="0"></div>
             <div><label>adr</label><input type="number" name="adr" value="100" min="0" step="0.01"></div>
             <div><label>required_car_parking_spaces</label><input type="number" name="required_car_parking_spaces" value="0" min="0"></div>
             <div><label>total_of_special_requests</label><input type="number" name="total_of_special_requests" value="0" min="0"></div>
@@ -204,7 +185,7 @@
 
       <details style="margin-top:1rem;">
         <summary>Alternativa: pegar lote de reservas en JSON (integraciones)</summary>
-        <label>Reservas (JSON array con las 26 variables por reserva)</label>
+        <label>Reservas (JSON array con las 23 variables por reserva)</label>
         <textarea id="bookings-json" rows="6" placeholder='[{"hotel": "City Hotel", ...}]'></textarea>
         <button id="overbooking-json-btn">Calcular con este lote</button>
       </details>
@@ -214,7 +195,7 @@
       <h2>Historial</h2>
       <button id="load-history-btn">Cargar historial reciente</button>
       <h3>Predicciones</h3>
-      <table id="predictions-table"><thead><tr><th>ID</th><th>Sede</th><th>Llegada</th><th>Probabilidad</th><th>Riesgo</th><th>Registrada</th></tr></thead><tbody></tbody></table>
+      <table id="predictions-table"><thead><tr><th>Nº reserva</th><th>Sede</th><th>Llegada</th><th>Probabilidad</th><th>Riesgo</th><th>Registrada</th></tr></thead><tbody></tbody></table>
       <h3>Overbooking</h3>
       <table id="overbooking-table"><thead><tr><th>ID</th><th>Sede</th><th>Fecha objetivo</th><th>Reservas</th><th>Riesgo aceptado</th><th>Extra recomendado</th><th>% overbooking</th></tr></thead><tbody></tbody></table>
     </div>
@@ -316,6 +297,7 @@
         const price = document.getElementById('sf-price').value;
         const payload = {
           sede_id: parseInt(sedeSelect.value, 10),
+          booking_reference: document.getElementById('sf-reference').value.trim(),
           booking_date: document.getElementById('sf-booking-date').value,
           checkin_date: document.getElementById('sf-checkin').value,
           checkout_date: document.getElementById('sf-checkout').value,
@@ -325,9 +307,7 @@
           channel: document.getElementById('sf-channel').value,
           price_per_night: price ? parseFloat(price) : null,
           country: document.getElementById('sf-country').value || null,
-          room_type: document.getElementById('sf-room').value || null,
           meal: document.getElementById('sf-meal').value || null,
-          deposit_type: document.getElementById('sf-deposit').value || null,
           is_repeated_guest: document.getElementById('sf-repeated').value === 'true',
           previous_cancellations: parseInt(document.getElementById('sf-prev-cancel').value, 10),
           special_requests: parseInt(document.getElementById('sf-requests').value, 10),
@@ -344,7 +324,7 @@
     // ---- Predicción avanzada ----
     const INT_FIELDS = ['lead_time','arrival_date_week_number','arrival_date_day_of_month','stays_in_weekend_nights',
       'stays_in_week_nights','adults','babies','is_repeated_guest','previous_cancellations',
-      'previous_bookings_not_canceled','booking_changes','days_in_waiting_list',
+      'previous_bookings_not_canceled','booking_changes',
       'required_car_parking_spaces','total_of_special_requests'];
 
     document.getElementById('advanced-form').addEventListener('submit', async (e) => {
@@ -357,14 +337,21 @@
         const fd = new FormData(e.target);
         const booking = {};
         let arrivalDate = null;
+        let bookingReference = null;
         for (const [key, value] of fd.entries()) {
           if (key === '__arrival_date') { arrivalDate = value || null; }
+          else if (key === '__booking_reference') { bookingReference = value.trim(); }
           else if (INT_FIELDS.includes(key)) { booking[key] = parseInt(value, 10); }
           else if (['children', 'adr'].includes(key)) { booking[key] = parseFloat(value); }
           else if (key === 'has_company') { booking[key] = value === 'true'; }
           else { booking[key] = value; }
         }
-        const payload = { sede_id: parseInt(sedeSelect.value, 10), arrival_date: arrivalDate, booking };
+        const payload = {
+          sede_id: parseInt(sedeSelect.value, 10),
+          booking_reference: bookingReference,
+          arrival_date: arrivalDate,
+          booking,
+        };
         const data = await apiFetch('/predictions', { method: 'POST', body: JSON.stringify(payload) });
         showPrediction(resultBox, data);
       } catch (err) {
@@ -426,7 +413,7 @@
       try {
         const predictions = await apiFetch('/history/predictions?limit=20');
         document.querySelector('#predictions-table tbody').innerHTML = predictions.map(p =>
-          `<tr><td>${p.id}</td><td>${p.sede_name}</td><td>${p.arrival_date || '—'}</td>` +
+          `<tr><td>${p.booking_reference}</td><td>${p.sede_name}</td><td>${p.arrival_date || '—'}</td>` +
           `<td>${(p.probability * 100).toFixed(1)}%</td>` +
           `<td><span class="pill risk-${p.risk_level || ''}">${p.risk_level || '—'}</span></td>` +
           `<td>${new Date(p.created_at).toLocaleString()}</td></tr>`

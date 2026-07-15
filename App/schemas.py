@@ -9,14 +9,12 @@ _CATEGORICAL_FIELDS = tuple(ALLOWED_CATEGORIES.keys())
 
 
 class BookingInput(BaseModel):
-    """Formato avanzado: las 26 features tal como las espera el modelo."""
+    """Formato avanzado: las 23 features tal como las espera el modelo v2."""
 
     hotel: str
     meal: str
     market_segment: str
     distribution_channel: str
-    reserved_room_type: str
-    deposit_type: str
     customer_type: str
     arrival_date_month: str
     country: str
@@ -32,7 +30,6 @@ class BookingInput(BaseModel):
     previous_cancellations: int = Field(ge=0)
     previous_bookings_not_canceled: int = Field(ge=0)
     booking_changes: int = Field(ge=0)
-    days_in_waiting_list: int = Field(ge=0)
     adr: float = Field(ge=0)
     required_car_parking_spaces: int = Field(ge=0)
     total_of_special_requests: int = Field(ge=0)
@@ -54,6 +51,14 @@ class SimpleBookingInput(BaseModel):
     """
 
     sede_id: int
+    booking_reference: str = Field(
+        min_length=1,
+        max_length=50,
+        description=(
+            "Número o localizador único de la reserva tal como lo maneja el hotel. "
+            "Repetirlo en la misma sede actualiza la predicción anterior."
+        ),
+    )
     booking_date: date = Field(description="Fecha en que se hizo la reserva")
     checkin_date: date
     checkout_date: date
@@ -62,29 +67,25 @@ class SimpleBookingInput(BaseModel):
     babies: int = Field(default=0, ge=0)
     channel: str = Field(description=f"Uno de: {list(CHANNEL_MAP)}")
     price_per_night: Optional[float] = Field(default=None, gt=0)
-    room_type: Optional[str] = None
     country: Optional[str] = None
     meal: Optional[str] = None
-    deposit_type: Optional[str] = None
     is_repeated_guest: bool = False
     previous_cancellations: int = Field(default=0, ge=0)
     special_requests: int = Field(default=0, ge=0)
     parking_spaces: int = Field(default=0, ge=0)
+
+    @field_validator("booking_reference")
+    @classmethod
+    def check_booking_reference(cls, v):
+        if not v.strip():
+            raise ValueError("booking_reference no puede estar en blanco")
+        return v.strip()
 
     @field_validator("channel")
     @classmethod
     def check_channel(cls, v):
         if v not in CHANNEL_MAP:
             raise ValueError(f"channel debe ser uno de: {list(CHANNEL_MAP)}")
-        return v
-
-    @field_validator("room_type")
-    @classmethod
-    def check_room_type(cls, v):
-        if v is not None and v not in ALLOWED_CATEGORIES["reserved_room_type"]:
-            raise ValueError(
-                f"room_type debe ser uno de: {ALLOWED_CATEGORIES['reserved_room_type']}"
-            )
         return v
 
     @field_validator("country")
@@ -99,15 +100,6 @@ class SimpleBookingInput(BaseModel):
     def check_meal(cls, v):
         if v is not None and v not in ALLOWED_CATEGORIES["meal"]:
             raise ValueError(f"meal debe ser uno de: {ALLOWED_CATEGORIES['meal']}")
-        return v
-
-    @field_validator("deposit_type")
-    @classmethod
-    def check_deposit(cls, v):
-        if v is not None and v not in ALLOWED_CATEGORIES["deposit_type"]:
-            raise ValueError(
-                f"deposit_type debe ser uno de: {ALLOWED_CATEGORIES['deposit_type']}"
-            )
         return v
 
     @model_validator(mode="after")
@@ -125,8 +117,6 @@ class SedeCreate(BaseModel):
     total_rooms: int = Field(gt=0)
     default_country: str = "PRT"
     default_meal: str = "BB"
-    default_deposit_type: str = "No Deposit"
-    default_room_type: str = "A"
     default_adr: Optional[float] = Field(default=None, gt=0)
 
     @field_validator("hotel_type")
@@ -151,8 +141,6 @@ class SedeOut(BaseModel):
     total_rooms: int
     default_country: str
     default_meal: str
-    default_deposit_type: str
-    default_room_type: str
     default_adr: Optional[float]
 
     class Config:
@@ -177,8 +165,16 @@ class AccountOut(BaseModel):
 
 class AdvancedPredictionRequest(BaseModel):
     sede_id: int
+    booking_reference: str = Field(min_length=1, max_length=50)
     arrival_date: Optional[date] = None
     booking: BookingInput
+
+    @field_validator("booking_reference")
+    @classmethod
+    def check_booking_reference(cls, v):
+        if not v.strip():
+            raise ValueError("booking_reference no puede estar en blanco")
+        return v.strip()
 
 
 class PredictionResponse(BaseModel):
@@ -191,6 +187,7 @@ class PredictionHistoryItem(BaseModel):
     id: int
     sede_id: int
     sede_name: str
+    booking_reference: str
     arrival_date: Optional[date]
     probability: float
     risk_level: Optional[str]

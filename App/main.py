@@ -100,25 +100,40 @@ def create_sede(
 # Predicciones
 # ---------------------------------------------------------------------------
 
-def _save_prediction(db, sede, features, probability, arrival_date):
+def _save_prediction(db, sede, features, probability, arrival_date, booking_reference):
     level = ml.risk_level(probability)
-    db.add(
-        PredictionRecord(
-            sede_id=sede.id,
-            arrival_date=arrival_date,
-            input_json=json.dumps(features, default=str),
-            probability=probability,
-            risk_level=level,
+    booking_reference = booking_reference.strip()
+
+    # Cada reserva es única en su sede: si el número ya existe se actualiza la
+    # predicción (la reserva pudo cambiar), en vez de duplicarla en el historial.
+    record = (
+        db.query(PredictionRecord)
+        .filter(
+            PredictionRecord.sede_id == sede.id,
+            PredictionRecord.booking_reference == booking_reference,
         )
+        .first()
     )
+    updated = record is not None
+    if record is None:
+        record = PredictionRecord(sede_id=sede.id, booking_reference=booking_reference)
+        db.add(record)
+    record.arrival_date = arrival_date
+    record.input_json = json.dumps(features, default=str)
+    record.probability = probability
+    record.risk_level = level
     db.commit()
+
+    message = (
+        f"Riesgo {level}: {probability * 100:.1f}% de probabilidad de que la "
+        f"reserva {booking_reference} en '{sede.name}' se cancele."
+    )
+    if updated:
+        message += " (Se actualizó la predicción anterior de esta reserva.)"
     return PredictionResponse(
         cancellation_probability=probability,
         risk_level=level,
-        message=(
-            f"Riesgo {level}: {probability * 100:.1f}% de probabilidad de que la "
-            f"reserva en '{sede.name}' se cancele."
-        ),
+        message=message,
     )
 
 
@@ -133,7 +148,9 @@ def create_simple_prediction(
     sede = get_account_sede(booking.sede_id, account, db)
     features = ml.expand_simple_booking(booking.model_dump(), sede)
     probability = ml.predict_probability(features)
-    return _save_prediction(db, sede, features, probability, booking.checkin_date)
+    return _save_prediction(
+        db, sede, features, probability, booking.checkin_date, booking.booking_reference
+    )
 
 
 @app.post("/predictions", response_model=PredictionResponse)
@@ -142,11 +159,13 @@ def create_prediction(
     account: Account = Depends(get_current_account),
     db: Session = Depends(get_db),
 ):
-    """Predicción avanzada: las 26 features explícitas (para integraciones PMS)."""
+    """Predicción avanzada: las 23 features explícitas (para integraciones PMS)."""
     sede = get_account_sede(payload.sede_id, account, db)
     features = payload.booking.model_dump()
     probability = ml.predict_probability(features)
-    return _save_prediction(db, sede, features, probability, payload.arrival_date)
+    return _save_prediction(
+        db, sede, features, probability, payload.arrival_date, payload.booking_reference
+    )
 
 
 @app.get("/history/predictions", response_model=list[PredictionHistoryItem])
@@ -169,6 +188,7 @@ def list_predictions(
             id=record.id,
             sede_id=record.sede_id,
             sede_name=sede_name,
+            booking_reference=record.booking_reference,
             arrival_date=record.arrival_date,
             probability=record.probability,
             risk_level=record.risk_level,
@@ -305,9 +325,7 @@ def landing(request: Request):
         {
             "hotel_types": ml.ALLOWED_CATEGORIES["hotel"],
             "countries": country_options(ml.ALLOWED_CATEGORIES["country"]),
-            "meals": ml.ALLOWED_CATEGORIES["meal"],
-            "deposit_types": ml.ALLOWED_CATEGORIES["deposit_type"],
-            "room_types": ml.ALLOWED_CATEGORIES["reserved_room_type"],
+            "meal_labels": ml.MEAL_LABELS,
         },
     )
 
@@ -321,5 +339,6 @@ def dashboard(request: Request):
             "categorical_values": ml.ALLOWED_CATEGORIES,
             "countries": country_options(ml.ALLOWED_CATEGORIES["country"]),
             "channels": ml.CHANNEL_LABELS,
+            "meal_labels": ml.MEAL_LABELS,
         },
     )
